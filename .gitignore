@@ -1,3 +1,13 @@
+# AlphaFold 3 results (stage 1 MSAs and stage 2 structures)
 **/output/
+
+# Slurm job logs
 *.out
+*.err
+
+# Figures written by vanilla-examples/plot_results.py
+**/plots/
+
+# gpu-benchmarks/results.csv is not ignored: its README says to commit it.
+
 __pycache__/
