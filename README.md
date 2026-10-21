@@ -1,9 +1,9 @@
-# AlphaFold 3 Examples on Bridges-2
+# AlphaFold 3 Examples on Lanec2
 
 Working examples for running [AlphaFold 3](https://github.com/google-deepmind/alphafold3)
-on the [Bridges-2](https://www.psc.edu/resources/bridges-2/) supercomputer at the
+on the Lanec2 supercomputer at the
 Pittsburgh Supercomputing Center (PSC). The examples use an Apptainer container,
-the shared genetic databases, and the shared model weights on Bridges-2, with
+the shared genetic databases, and the shared model weights on Lanec2, with
 Slurm batch scripts you can copy and adapt.
 
 > [!IMPORTANT]
@@ -14,18 +14,17 @@ Slurm batch scripts you can copy and adapt.
 
 ## Contents
 
-- [What is on Bridges-2](#what-is-on-bridges-2)
+- [What is on Lanec2](#what-is-on-lanec2)
 - [Quick start](#quick-start)
 - [Environment variables](#environment-variables)
 - [Input format](#input-format)
 - [Running AlphaFold 3](#running-alphafold-3)
-- [GPU notes for Bridges-2](#gpu-notes-for-bridges-2)
 - [Outputs](#outputs)
 - [Troubleshooting](#troubleshooting)
 - [Citing](#citing)
 - [References](#references)
 
-## What is on Bridges-2
+## What is on Lanec2
 
 | Resource | Location |
 | --- | --- |
@@ -80,10 +79,10 @@ You don't need to download the containers, databases, or weights yourself.
 
 ## Quick start
 
-1. Log in to Bridges-2 and clone this repository into your project space:
+1. Log in to Lanec2 and clone this repository into your project space:
 
    ```bash
-   ssh <username>@bridges2.psc.edu
+   ssh <username>@lanec2.compbio.cs.cmu.edu
    cd $PROJECT
    git clone --recurse-submodules https://github.com/icaoberg/alphafold3-examples.git
    cd alphafold3-examples
@@ -121,7 +120,7 @@ container. It binds `/ocean`, `$PROJECT` and `$LOCAL`, and adds `--nv` when
 `nvidia-smi` finds a GPU, so the same command works on `RM-shared` and
 `GPU-shared` nodes.
 
-| Variable | Value on Bridges-2 | Purpose |
+| Variable | Value on Lanec2 | Purpose |
 | --- | --- | --- |
 | `AF3_VERSION` | `3.0.4` | AlphaFold 3 version of the module |
 | `AF3_ROOT` | `/ocean/datasets/community/alphafold3` | Root of the shared install |
@@ -150,7 +149,7 @@ The job scripts also read these environment variables and fall back to the
 defaults below. `sbatch` passes your environment to the job, so any of them you
 export before submitting the two stages are used by both.
 
-| Variable | Default on Bridges-2 | Purpose |
+| Variable | Default on Lanec2 | Purpose |
 | --- | --- | --- |
 | `AF3_INPUT` | *(set by both job scripts)* | Input JSON file: the script's argument, or `fold_input.json` in the submit directory |
 | `AF3_NAME` | *(set by both job scripts)* | The input's `name`; used to find `<name>/<name>_data.json` |
@@ -359,10 +358,6 @@ You can also submit the stages one at a time without `--dependency`: submit
 # --dependency=aftercorr starts stage 2 task N when stage 1 task N succeeds.
 # Each replicate runs the full data pipeline. Submit with --array=1 for a
 # single run.
-#
-# RM-shared (Bridges-2 User Guide): 2 GB of memory per core requested, up to
-# 64 cores on one node, 1-hour default and 72-hour maximum time limit. The 32
-# cores requested above give the MSA search tools about 64 GB of memory.
 
 # Print how long the script took when it exits, even on failure.
 SECONDS=0
@@ -427,16 +422,8 @@ else
 fi
 ```
 
-From the [Bridges-2 User Guide](https://www.psc.edu/resources/bridges-2/user-guide/),
-`RM-shared` jobs:
-
-- get 2 GB of memory for each core requested with `--ntasks-per-node`;
-- can use up to 64 cores, on a single node;
-- have a 1-hour default time limit and a 72-hour maximum.
-
-The script asks for 32 cores, which gives the MSA search tools about 64 GB of
-memory, and 12 hours. For very large inputs, raise `--ntasks-per-node` (up to
-64) for more memory, and `--time` (up to `72:00:00`).
+The script asks for 32 cores and 12 hours. For very large inputs, raise
+`--ntasks-per-node` for more memory, and `--time`.
 
 #### Stage 1 running times
 
@@ -549,10 +536,6 @@ run_alphafold \
   --norun_data_pipeline
 ```
 
-The script requests one L40S GPU (48 GB), which runs the default `triton`
-attention with no extra settings. For very large complexes, change `--gpus` to
-`h100-80:1`. Don't use the V100 GPUs (see [GPU notes](#gpu-notes-for-bridges-2)).
-
 Both stages write to `$AF3_SCRATCH` on the node's local disk while they run and
 copy the results to `$AF3_OUTPUT_DIR`. If a job hits its time limit, Slurm
 allows only a short grace period before killing it, so set `--time` with some
@@ -629,27 +612,6 @@ replicate sees its existing `_data.json` and skips the data pipeline.
 Run `run_alphafold --helpfull` after `module load alphafold3/3.0.4` to
 list every flag.
 
-## GPU notes for Bridges-2
-
-| GPU | `--gpus=` | Notes |
-| --- | --- | --- |
-| NVIDIA L40S 48 GB | `l40s-48:1` | Used by the examples. Ada architecture; the default `triton` attention works. |
-| NVIDIA H100 80 GB | `h100-80:1` | Best choice for large complexes; works with the default settings. |
-
-Don't use the V100 GPUs (`v100-16`, `v100-32`). They are older than Ampere, so
-they can't run the default attention, need XLA workarounds, and have less memory.
-
-AlphaFold 3 uses a **single GPU** per prediction, so request exactly one:
-`--gpus=<type>:1` on `GPU-shared`. That is also the minimum on `GPU-shared`.
-More GPUs won't make one prediction faster; the extra GPUs sit idle and are
-still charged to your allocation. Don't use the `GPU` partition for these jobs:
-it allocates whole nodes (8 GPUs), so you'd pay for
-7 idle GPUs. To process many inputs, submit one 1-GPU job per input or use a
-Slurm job array.
-
-Check the GPU types and partitions currently available with `sinfo` and the
-[Bridges-2 User Guide](https://www.psc.edu/resources/bridges-2/user-guide/).
-
 ## Outputs
 
 For each input, AlphaFold 3 writes a directory named after the job containing:
@@ -670,8 +632,8 @@ for how to interpret the confidence metrics.
 
 | Symptom | Fix |
 | --- | --- |
-| `RESOURCE_EXHAUSTED` / out of GPU memory | Enable [unified memory](#unified-memory-large-inputs-or-small-gpus), or use an H100 node |
-| Triton/cuDNN attention errors | The job landed on an older GPU; check that `--gpus` is `l40s-48:1` or `h100-80:1` |
+| `RESOURCE_EXHAUSTED` / out of GPU memory | Enable [unified memory](#unified-memory-large-inputs-or-small-gpus), or request a GPU with more memory |
+| Triton/cuDNN attention errors | The job landed on a GPU older than Ampere, which can't run the default attention; request a newer GPU with `--gpus` |
 | Long time before inference starts | JAX compiles the model at the start of each job when the cache is on `$LOCAL`. Point `AF3_JAX_CACHE_DIR` at `$PROJECT` so later jobs reuse it |
 | No `af3-inference` job after `af3-data` finished | The data pipeline failed, so Slurm cancelled stage 2. Check `af3-data-<jobid>.out`, fix the problem, and submit both stages again |
 | `Failed to find the following module(s): "alphafold3"` | The module isn't on your `MODULEPATH`. Check `module avail alphafold3`, or add its directory with `module use <dir>` |
@@ -679,7 +641,7 @@ for how to interpret the confidence metrics.
 | `No such file or directory` for `/ocean/...` inside the container | `run_alphafold` binds `/ocean`, `$PROJECT` and `$LOCAL`. If you call `apptainer exec` yourself, add `--bind /ocean` (and `--bind $PROJECT`) ([bind paths docs](https://apptainer.org/docs/user/latest/bind_paths_and_mounts.html)) |
 | Disk quota exceeded | Write outputs and caches to `$PROJECT`, not `$HOME` |
 
-For Bridges-2 problems, contact PSC support at
+For Lanec2 problems, contact PSC support at
 [help@psc.edu](mailto:help@psc.edu). For AlphaFold 3 problems, check the
 upstream [known issues](https://github.com/google-deepmind/alphafold3/blob/main/docs/known_issues.md)
 and [issue tracker](https://github.com/google-deepmind/alphafold3/issues).
@@ -701,8 +663,8 @@ If you publish results produced with AlphaFold 3, cite:
 }
 ```
 
-Please also acknowledge your use of Bridges-2 and your ACCESS allocation as
-described in the [PSC acknowledgement guidelines](https://www.psc.edu/resources/bridges-2/user-guide/).
+Please also acknowledge your use of Lanec2 and your ACCESS allocation as
+described in the PSC acknowledgement guidelines.
 
 ## References
 
@@ -741,12 +703,10 @@ described in the [PSC acknowledgement guidelines](https://www.psc.edu/resources/
 - Singularity compatibility: <https://apptainer.org/docs/user/latest/singularity_compatibility.html>
 - Source code: <https://github.com/apptainer/apptainer>
 
-### Bridges-2 and PSC
+### Lanec2 and PSC
 
-- Bridges-2 overview: <https://www.psc.edu/resources/bridges-2/>
-- Bridges-2 User Guide (partitions, GPUs, file systems, Slurm): <https://www.psc.edu/resources/bridges-2/user-guide/>
 - PSC support: [help@psc.edu](mailto:help@psc.edu)
-- ACCESS allocations (request time on Bridges-2): <https://allocations.access-ci.org/>
+- ACCESS allocations (request time on Lanec2): <https://allocations.access-ci.org/>
 
 ### Databases
 
