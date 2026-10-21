@@ -15,6 +15,22 @@ written to each example directory but are ignored by Git.
 
 ## Hardware
 
+### What is AVX?
+
+AVX (Advanced Vector Extensions) is a set of CPU instructions that do the same
+operation on several numbers at once. Intel added it with Sandy Bridge and AMD
+with Bulldozer, both in 2011, and math libraries rely on it to speed up array
+and matrix work. The jaxlib in the AlphaFold 3 container was built to use AVX,
+so it won't run on a CPU without it.
+
+To check whether a node has AVX, run this on the node:
+
+```bash
+grep -o -w avx /proc/cpuinfo | head -1
+```
+
+It prints `avx` if the CPU has it and nothing if it doesn't.
+
 ### CPU nodes that can run AlphaFold 3 (stage 1)
 
 AlphaFold 3 needs a CPU with AVX instructions. The JAX library in the
