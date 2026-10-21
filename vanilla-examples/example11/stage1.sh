@@ -117,6 +117,7 @@ print(re.sub(r"[^A-Za-z0-9_.-]", "", name))
 data_json="$AF3_OUTPUT_DIR/$AF3_NAME/${AF3_NAME}_data.json"
 
 echo "Replicate: $AF3_REPLICATE"
+echo "Node: $(hostname) (partition ${SLURM_JOB_PARTITION:-none}, $(nproc) cores)"
 echo "Input:  $AF3_INPUT"
 echo "Output: $AF3_OUTPUT_DIR/$AF3_NAME"
 
